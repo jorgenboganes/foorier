@@ -84,7 +84,11 @@ export default function Home() {
   useEffect(() => {
     if (canvasData && canvasData?.length != 0) {
       const data = JSON.parse(canvasData as string);
-      const pointData = data.lines[0];
+      const pointData = {
+        points: data.lines.map((l: { points: Point[] }) => l.points).flat(),
+        brushColor: data.lines[0].brushColor,
+        brushRadius: data.lines[0].brushRadius,
+      };
       const result: Point[] = interpolateData(pointData, 1024);
       const f_x = result.map((p) => p.y).map((p) => (Number.isNaN(p) ? 0 : p));
       const FFT = require("fft.js");
