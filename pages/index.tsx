@@ -1,6 +1,5 @@
 import Head from "next/head";
 import { Inter } from "next/font/google";
-import styles from "@/styles/Home.module.css";
 import CanvasDraw from "react-canvas-draw";
 import { useEffect, useState } from "react";
 
@@ -96,7 +95,7 @@ export default function Home() {
         />
         {outval.map((o, i) => {
           return (
-            <p>
+            <p style={{ margin: 0, fontSize: 12 }}>
               {i}: {o.toString()}
             </p>
           );
