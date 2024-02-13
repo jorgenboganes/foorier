@@ -1,7 +1,7 @@
 import Head from "next/head";
 import { Inter } from "next/font/google";
 import CanvasDraw from "react-canvas-draw";
-import { useEffect, useState } from "react";
+import { RefObject, useEffect, useRef, useState } from "react";
 
 const inter = Inter({ subsets: ["latin"] });
 interface Point {
@@ -66,8 +66,20 @@ const computeFFT = (inputLine: { points: Point[] }, size: number) => {
 };
 
 export default function Home() {
+  const canvasRef: RefObject<CanvasDraw> = useRef(null);
   const [canvasData, setCanvasData] = useState<string>();
   const [outval, setOut] = useState<Number[]>([]);
+
+  const clear = () => {
+    if (canvasRef?.current) {
+      canvasRef.current.clear();
+    }
+  };
+  const undo = () => {
+    if (canvasRef?.current) {
+      canvasRef.current.undo();
+    }
+  };
 
   useEffect(() => {
     if (canvasData && canvasData?.length != 0) {
@@ -89,10 +101,20 @@ export default function Home() {
       </Head>
       <main>
         <CanvasDraw
+          ref={canvasRef}
           brushRadius={1}
           lazyRadius={5}
-          onChange={(e) => setCanvasData(e.getSaveData())}
+          onChange={(e) => {
+            const saveData = e.getSaveData();
+            const json = JSON.parse(saveData);
+            if (json.lines.length !== 0) {
+              setCanvasData(e.getSaveData());
+            }
+          }}
         />
+
+        <button onClick={() => undo()}>Undo</button>
+        <button onClick={() => clear()}>Clear</button>
         {outval.map((o, i) => {
           return (
             <p style={{ margin: 0, fontSize: 12 }}>
