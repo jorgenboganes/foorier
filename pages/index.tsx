@@ -20,7 +20,7 @@ const foorier = (
 ): number => {
   let fx: number = amplitudes[0] / N;
   for (let n = 1; n <= N / 2; n++) {
-    const frequency: number = (2 * Math.PI * n) / TT;
+    const frequency: number = n / N;
     fx += (amplitudes[n] / (N / 2)) * Math.cos(frequency * x + phases[n]);
   }
   return fx;
