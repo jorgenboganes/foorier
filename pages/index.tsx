@@ -52,65 +52,62 @@ function getAmpPhase(out: number[]): AmpPhaseResult {
   };
 }
 
-function interpolateData(points: Point[], sampleSize: number): Point[] {
-  const xValues: number[] = points.map((point) => point.x);
-  const yValues: number[] = points.map((point) => point.y);
+function interpolateDataSpline(inputData: Point[]): Point[] {
+  const SplineInterpolator = require("spline-interpolator");
+  const x = inputData.map((p) => p.x);
+  const y = inputData.map((p) => p.y);
+  const interpolator = new SplineInterpolator(x, y);
+  var result: Point[] = [];
+  for (const [xi, yi] of interpolator.curve(100, [0.0, 400])) {
+    result.push({ x: xi, y: yi });
+  }
+  return result;
+}
+
+function interpolateData(inputData: Point[]): Point[] {
+  // Extract x and y values
+  const xValues: number[] = inputData.map((point) => point.x);
+  const yValues: number[] = inputData.map((point) => point.y);
+
+  // Find the minimum and maximum x values
+  const minX: number = Math.min(...xValues);
+  const maxX: number = Math.max(...xValues);
+
+  // Interpolate x values with step 1 and round to nearest integer
   const interpolatedX: number[] = Array.from(
-    { length: sampleSize },
-    (_, index) =>
-      ((Math.max(...xValues) - Math.min(...xValues)) / (sampleSize - 1)) *
-        index +
-      Math.min(...xValues)
+    { length: maxX - minX + 1 },
+    (_, index) => Math.round(minX + index)
   );
 
-  const interpolatedY: number[] = interpolatedX.map((x) =>
-    interpolate(x, xValues, yValues)
-  );
+  // Linear interpolation for y values
+  const interpolatedY: number[] = interpolatedX.map((x) => {
+    const lowerIndex: number = xValues.findIndex((val) => val <= x);
+    const upperIndex: number = xValues.findIndex((val) => val > x);
 
-  const interpolatedData: Point[] = interpolatedX.map((_, index) => ({
-    x: index,
+    if (
+      lowerIndex === -1 ||
+      upperIndex === -1 ||
+      lowerIndex === xValues.length - 1
+    ) {
+      return yValues[yValues.length - 1];
+    }
+
+    const lowerX: number = xValues[lowerIndex];
+    const upperX: number = xValues[upperIndex];
+    const lowerY: number = yValues[lowerIndex];
+    const upperY: number = yValues[upperIndex];
+
+    return lowerY + ((x - lowerX) / (upperX - lowerX)) * (upperY - lowerY);
+  });
+
+  // Combine interpolated x and y values into a list of points
+  const resultData: Point[] = interpolatedX.map((x, index) => ({
+    x,
     y: interpolatedY[index],
   }));
 
-  return interpolatedData;
+  return resultData;
 }
-
-// Helper function for linear interpolation
-function interpolate(x: number, xValues: number[], yValues: number[]): number {
-  const lowerIndex: number = xValues.findIndex((value) => value > x) - 1;
-  const upperIndex: number = lowerIndex + 1;
-
-  const x0: number = xValues[lowerIndex];
-  const x1: number = xValues[upperIndex];
-  const y0: number = yValues[lowerIndex];
-  const y1: number = yValues[upperIndex];
-
-  return y0 + ((x - x0) * (y1 - y0)) / (x1 - x0);
-}
-
-function downsample(originalArray: number[], targetSamples: number) {
-  const stepSize = Math.floor(originalArray.length / targetSamples);
-  const downsampledArray = [];
-
-  for (let i = 0; i < originalArray.length; i += stepSize) {
-    downsampledArray.push(originalArray[i]);
-  }
-
-  return downsampledArray;
-}
-
-const computeFFT = (inputLine: { points: Point[] }, size: number) => {
-  /* const FFT = require("fft.js");
-  const f = new FFT(size);
-  const out = f.createComplexArray();
-
-  console.log(inputLine.points);
-  const realInput = new Array(10, 5, 6, 5, 3, 5, 3, 2);
-  console.log(realInput);
-  f.realTransform(out, realInput);
-  f.completeSpectrum(out);
-  console.log(out);*/
-};
 
 export default function Home() {
   const canvasRef: RefObject<CanvasDraw> = useRef(null);
@@ -131,11 +128,9 @@ export default function Home() {
     }
   };
 
-  const setGraphData = (newLine: any) => {
+  const setGraphData = (newData: any) => {
     if (canvasRef?.current && canvasRef2?.current) {
       const olddata: any = JSON.parse(canvasRef.current.getSaveData());
-      const newData: any = { ...olddata, lines: [newLine] };
-      console.log(JSON.stringify(newData));
       canvasRef2.current.loadSaveData(JSON.stringify(newData), true);
     }
   };
@@ -146,28 +141,19 @@ export default function Home() {
       const points: Point[] = data.lines
         .map((l: { points: Point[] }) => l.points)
         .flat();
-      const result: Point[] = interpolateData(points, 1024);
-      const f_x = result.map((p) => p.y).map((p) => (Number.isNaN(p) ? 0 : p));
-      const f = new FFT(1024);
-      const out = f.createComplexArray();
-      f.realTransform(out, f_x);
-      f.completeSpectrum(out);
-      const amp = getAmpPhase(out);
-      setAmps(amp);
-      setOut(out);
 
-      const fr = result.map((p, i) => {
-        return foorier(p.x, amp.amplitudes, amp.phases, i, 1023);
-      });
-      const downsampledFr = downsample(fr, 400);
-      const newLine = {
-        points: downsampledFr.map((f, i) => {
-          return { x: i, y: f };
-        }),
-        brushColor: "#444",
-        brushRadius: 1,
+      console.log(points);
+      console.log(interpolateData(points));
+      const newData = {
+        ...data,
+        lines: [
+          {
+            ...data.lines,
+            points: interpolateData(points),
+          },
+        ],
       };
-      setGraphData(newLine);
+      setGraphData(newData);
     }
   }, [canvasData]);
 
