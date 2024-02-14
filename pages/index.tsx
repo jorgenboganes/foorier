@@ -21,7 +21,7 @@ const foorier = (
   let fx: number = amplitudes[0] / N;
   for (let n = 1; n <= N / 2; n++) {
     const frequency: number = (2 * Math.PI * n) / TT;
-    fx += (amplitudes[n] / (N / 2)) * Math.cos(frequency * x + phases[n - 1]);
+    fx += (amplitudes[n] / (N / 2)) * Math.cos(frequency * x + phases[n]);
   }
   return fx;
 };
@@ -50,18 +50,6 @@ function getAmpPhase(out: number[]): AmpPhaseResult {
     amplitudes: amplitudes,
     phases: phases,
   };
-}
-
-function interpolateDataSpline(inputData: Point[]): Point[] {
-  const SplineInterpolator = require("spline-interpolator");
-  const x = inputData.map((p) => p.x);
-  const y = inputData.map((p) => p.y);
-  const interpolator = new SplineInterpolator(x, y);
-  var result: Point[] = [];
-  for (const [xi, yi] of interpolator.curve(100, [0.0, 400])) {
-    result.push({ x: xi, y: yi });
-  }
-  return result;
 }
 
 function interpolateData(inputData: Point[]): Point[] {
@@ -108,6 +96,16 @@ function interpolateData(inputData: Point[]): Point[] {
 
   return resultData;
 }
+function normalizeArray(arr: number[], newMin = 0, newMax = 400) {
+  const oldMin = Math.min(...arr);
+  const oldMax = Math.max(...arr);
+
+  const normalizedArray = arr.map(
+    (x) => ((x - oldMin) * (newMax - newMin)) / (oldMax - oldMin) + newMin
+  );
+
+  return normalizedArray;
+}
 
 export default function Home() {
   const canvasRef: RefObject<CanvasDraw> = useRef(null);
@@ -142,17 +140,28 @@ export default function Home() {
         .map((l: { points: Point[] }) => l.points)
         .flat();
 
-      console.log(points);
-      console.log(interpolateData(points));
+      const interpolated = interpolateData(points);
+      const result: Point[] = interpolated;
+      const f_x = result.map((p) => p.y).map((p) => (Number.isNaN(p) ? 0 : p));
+      const FFT = require("fft.js");
+      const f = new FFT(128);
+      const out = f.createComplexArray();
+      f.realTransform(out, f_x);
+      f.completeSpectrum(out);
+      setOut(out);
+      const newArray = normalizeArray(out);
       const newData = {
         ...data,
         lines: [
           {
-            ...data.lines,
-            points: interpolateData(points),
+            ...data.lines[0],
+            points: newArray.map((y, i) => {
+              return { x: i, y: y };
+            }),
           },
         ],
       };
+      console.log(newData);
       setGraphData(newData);
     }
   }, [canvasData]);
