@@ -2,22 +2,18 @@ import Head from "next/head";
 import { Inter } from "next/font/google";
 import CanvasDraw from "react-canvas-draw";
 import { RefObject, useEffect, useRef, useState } from "react";
+const FFT = require("fft.js");
 
 const inter = Inter({ subsets: ["latin"] });
-interface Point {
+
+type Point = {
   x: number;
   y: number;
-}
+};
 
-interface Data {
-  points: Point[];
-}
-
-function interpolateData(data: Data, sampleSize: number): Point[] {
-  const xValues: number[] = data.points.map((point) => point.x);
-  const yValues: number[] = data.points.map((point) => point.y);
-
-  // Perform linear interpolation
+function interpolateData(points: Point[], sampleSize: number): Point[] {
+  const xValues: number[] = points.map((point) => point.x);
+  const yValues: number[] = points.map((point) => point.y);
   const interpolatedX: number[] = Array.from(
     { length: sampleSize },
     (_, index) =>
@@ -30,7 +26,6 @@ function interpolateData(data: Data, sampleSize: number): Point[] {
     interpolate(x, xValues, yValues)
   );
 
-  // Create an array of objects representing the interpolated points
   const interpolatedData: Point[] = interpolatedX.map((_, index) => ({
     x: index,
     y: interpolatedY[index],
@@ -84,20 +79,19 @@ export default function Home() {
   useEffect(() => {
     if (canvasData && canvasData?.length != 0) {
       const data = JSON.parse(canvasData as string);
-      const pointData = {
-        points: data.lines.map((l: { points: Point[] }) => l.points).flat(),
-        brushColor: data.lines[0].brushColor,
-        brushRadius: data.lines[0].brushRadius,
-      };
-      const result: Point[] = interpolateData(pointData, 1024);
+      const points: Point[] = data.lines
+        .map((l: { points: Point[] }) => l.points)
+        .flat();
+      const result: Point[] = interpolateData(points, 1024);
       const f_x = result.map((p) => p.y).map((p) => (Number.isNaN(p) ? 0 : p));
-      const FFT = require("fft.js");
+
       const f = new FFT(512);
       const out = f.createComplexArray();
       f.realTransform(out, f_x);
       setOut(out);
     }
   }, [canvasData]);
+
   return (
     <>
       <Head>
