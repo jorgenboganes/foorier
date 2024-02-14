@@ -15,7 +15,6 @@ const foorier = (
   x: number,
   amplitudes: number[],
   phases: number[],
-  TT: number,
   N: number
 ): number => {
   let fx: number = amplitudes[0] / N;
@@ -152,7 +151,7 @@ export default function Home() {
 
       const ampPhase = getAmpPhase(out);
       const newOut = out.map((o: number) =>
-        foorier(o, ampPhase.amplitudes, ampPhase.phases, out.length, 128)
+        foorier(o, ampPhase.amplitudes, ampPhase.phases, 128)
       );
       const newArray = normalizeArray(newOut);
       const newData = {
