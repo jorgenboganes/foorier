@@ -145,11 +145,16 @@ export default function Home() {
       const f_x = result.map((p) => p.y).map((p) => (Number.isNaN(p) ? 0 : p));
       const FFT = require("fft.js");
       const f = new FFT(128);
-      const out = f.createComplexArray();
+      var out = f.createComplexArray();
       f.realTransform(out, f_x);
       f.completeSpectrum(out);
       setOut(out);
-      const newArray = normalizeArray(out);
+
+      const ampPhase = getAmpPhase(out);
+      const newOut = out.map((o: number) =>
+        foorier(o, ampPhase.amplitudes, ampPhase.phases, out.length, 128)
+      );
+      const newArray = normalizeArray(newOut);
       const newData = {
         ...data,
         lines: [
