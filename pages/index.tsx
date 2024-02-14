@@ -88,6 +88,8 @@ export default function Home() {
       const f = new FFT(512);
       const out = f.createComplexArray();
       f.realTransform(out, f_x);
+      f.completeSpectrum(out); // Fill in the full spectrum for real input
+
       setOut(out);
     }
   }, [canvasData]);
