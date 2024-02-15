@@ -2,7 +2,6 @@ import Head from "next/head";
 import { Inter } from "next/font/google";
 import CanvasDraw from "react-canvas-draw";
 import { RefObject, useEffect, useRef, useState } from "react";
-const FFT = require("fft.js");
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -134,25 +133,35 @@ export default function Home() {
 
   useEffect(() => {
     if (canvasData && canvasData?.length != 0) {
+      //Importerer fft.js
+      const FFT = require("fft.js");
+      //Henter data fra canvas
       const data = JSON.parse(canvasData as string);
+      //Konvererer til points (x/y) type
       const points: Point[] = data.lines
         .map((l: { points: Point[] }) => l.points)
         .flat();
-
-      const interpolated = interpolateData(points);
-      const result: Point[] = interpolated;
+      //Interpolerer data
+      const result: Point[] = interpolateData(points);
+      //Henter ut kun y-verdiene i result til f_x
       const f_x = result.map((p) => p.y).map((p) => (Number.isNaN(p) ? 0 : p));
-      const FFT = require("fft.js");
+      //Lager ny fft-liste på 128 datapunkter
       const f = new FFT(128);
+      //lager en complex array or setter i out
       var out = f.createComplexArray();
+      //transformer f_x inn i out?
       f.realTransform(out, f_x);
+      //???
       f.completeSpectrum(out);
+      //Setter state (react-greie)
       setOut(out);
-
+      //Henter amplituder og faser fra out
       const ampPhase = getAmpPhase(out);
-      const newOut = out.map((o: number) =>
-        foorier(o, ampPhase.amplitudes, ampPhase.phases, 128)
+      //foorier over hvert datapunkt i out, men bruker ikke tallet, men heller indeksen??
+      const newOut = out.map((o: number, i: number) =>
+        foorier(i, ampPhase.amplitudes, ampPhase.phases, 64)
       );
+      //Normaliserer data til å passe i nytt canvas
       const newArray = normalizeArray(newOut);
       const newData = {
         ...data,
